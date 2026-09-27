@@ -38,6 +38,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
+import com.wgrou.mangareader.data.ChapterLoader
+import com.wgrou.mangareader.data.ChapterLoadResult
 
 class MainActivity : ComponentActivity() {
 
@@ -64,7 +66,7 @@ class MainActivity : ComponentActivity() {
         setContent {
 
             val libraryManager = LibraryManager(this)
-
+            val chapterLoader = ChapterLoader(libraryManager)
             val progressManager = ProgressManager(this)
 
             MangaReaderTheme {
@@ -136,14 +138,13 @@ class MainActivity : ComponentActivity() {
                 ): List<File>? {
 
                     return when (
-                        val result =
-                            libraryManager.getPages(
-                                series,
-                                chapter
-                            )
+                        val result = chapterLoader.load(
+                            series,
+                            chapter
+                        )
                     ) {
 
-                        is PageLoadResult.Success -> {
+                        is ChapterLoadResult.Success -> {
 
                             chapterLoadError = null
 
@@ -154,33 +155,19 @@ class MainActivity : ComponentActivity() {
                                         1,
                                         result.pages.size
                                     )
-
                             }
 
                             result.pages
-
                         }
 
-                        PageLoadResult.MissingChapter -> {
+                        is ChapterLoadResult.Error -> {
 
                             chapterLoadError =
-                                "The files for Chapter ${chapter} could not be found."
+                                result.message
 
                             null
-
                         }
-
-                        PageLoadResult.NoPages -> {
-
-                            chapterLoadError =
-                                "No readable pages were found for Chapter ${chapter}."
-
-                            null
-
-                        }
-
                     }
-
                 }
 
                 val continueReadingItems =
