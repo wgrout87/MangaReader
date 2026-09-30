@@ -40,6 +40,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import com.wgrou.mangareader.data.ChapterLoader
 import com.wgrou.mangareader.data.ChapterLoadResult
+import com.wgrou.mangareader.reader.ReaderCoordinator
+import com.wgrou.mangareader.reader.ChapterOpenDecision
 
 class MainActivity : ComponentActivity() {
 
@@ -68,6 +70,7 @@ class MainActivity : ComponentActivity() {
             val libraryManager = LibraryManager(this)
             val chapterLoader = ChapterLoader(libraryManager)
             val progressManager = ProgressManager(this)
+            val readerCoordinator = ReaderCoordinator()
 
             MangaReaderTheme {
 
@@ -166,6 +169,87 @@ class MainActivity : ComponentActivity() {
                                 result.message
 
                             null
+                        }
+                    }
+                }
+
+                fun openChapter(
+                    series: Series,
+                    chapter: Float,
+                    page: Int = 1
+                ) {
+                    selectedSeries = series
+                    selectedChapter = chapter
+                    currentPage = page
+
+                    selectedPages =
+                        loadChapterPages(
+                            series,
+                            chapter
+                        )
+                }
+
+                fun openChapterAtEnd(
+                    series: Series,
+                    chapter: Float
+                ) {
+                    selectedSeries = series
+                    selectedChapter = chapter
+
+                    val pages =
+                        loadChapterPages(
+                            series,
+                            chapter
+                        )
+
+                    if (pages != null) {
+                        currentPage =
+                            pages.size.coerceAtLeast(1)
+
+                        selectedPages = pages
+                    }
+                }
+
+                fun requestChapterOpen(
+                    series: Series,
+                    chapter: Float
+                ) {
+                    continuousReading = false
+
+                    pendingChapterSeries = series
+                    pendingChapter = chapter
+
+                    val seriesProgress =
+                        allProgress.find {
+                            it.seriesTitle == series.title
+                        }
+
+                    when (
+                        val decision =
+                            readerCoordinator.decideChapterOpen(
+                                series = series,
+                                chapter = chapter,
+                                seriesProgress = seriesProgress
+                            )
+                    ) {
+                        is ChapterOpenDecision.OpenChapter -> {
+
+                            openChapter(
+                                series = series,
+                                chapter = chapter
+                            )
+                        }
+
+                        is ChapterOpenDecision.ResumeChapter -> {
+
+                            pendingResumePage = decision.page
+                            showResumeDialog = true
+                        }
+
+                        is ChapterOpenDecision.AskReread -> {
+
+                            pendingRereadSeries = series
+                            showRereadDialog = true
                         }
                     }
                 }
@@ -292,15 +376,11 @@ class MainActivity : ComponentActivity() {
                                         chapter != null
                                     ) {
 
-                                        selectedSeries = series
-                                        selectedChapter = chapter
-                                        currentPage = pendingResumePage
-
-                                        selectedPages =
-                                            loadChapterPages(
-                                                series,
-                                                chapter
-                                            )
+                                        openChapter(
+                                            series = series,
+                                            chapter = chapter,
+                                            page = pendingResumePage
+                                        )
 
                                     }
 
@@ -335,15 +415,10 @@ class MainActivity : ComponentActivity() {
                                         chapter != null
                                     ) {
 
-                                        selectedSeries = series
-                                        selectedChapter = chapter
-                                        currentPage = 1
-
-                                        selectedPages =
-                                            loadChapterPages(
-                                                series,
-                                                chapter
-                                            )
+                                        openChapter(
+                                            series = series,
+                                            chapter = chapter
+                                        )
 
                                     }
 
@@ -427,15 +502,10 @@ class MainActivity : ComponentActivity() {
 
                                         continuousReading = false
 
-                                        selectedSeries = series
-                                        selectedChapter = chapter
-                                        currentPage = 1
-
-                                        selectedPages =
-                                            loadChapterPages(
-                                                series,
-                                                chapter
-                                            )
+                                        openChapter(
+                                            series = series,
+                                            chapter = chapter
+                                        )
 
                                     }
 
@@ -478,15 +548,10 @@ class MainActivity : ComponentActivity() {
 
                                         continuousReading = false
 
-                                        selectedSeries = series
-                                        selectedChapter = chapter
-                                        currentPage = 1
-
-                                        selectedPages =
-                                            loadChapterPages(
-                                                series,
-                                                chapter
-                                            )
+                                        openChapter(
+                                            series = series,
+                                            chapter = chapter
+                                        )
 
                                     }
 
@@ -672,16 +737,10 @@ class MainActivity : ComponentActivity() {
 
                                     continuousReading = true
 
-                                    selectedChapter =
-                                        nextChapter
-
-                                    currentPage = 1
-
-                                    selectedPages =
-                                        loadChapterPages(
-                                            selectedSeries!!,
-                                            nextChapter
-                                        )
+                                    openChapter(
+                                        series = selectedSeries!!,
+                                        chapter = nextChapter
+                                    )
 
                                 }
 
@@ -716,23 +775,10 @@ class MainActivity : ComponentActivity() {
 
                                 if (previousChapter != null) {
 
-                                    selectedChapter =
-                                        previousChapter
-
-                                    val pages =
-                                        loadChapterPages(
-                                            selectedSeries!!,
-                                            previousChapter
-                                        )
-
-                                    if (pages != null) {
-
-                                        currentPage =
-                                            pages.size.coerceAtLeast(1)
-
-                                        selectedPages = pages
-
-                                    }
+                                    openChapterAtEnd(
+                                        series = selectedSeries!!,
+                                        chapter = previousChapter
+                                    )
 
                                 }
 
@@ -755,16 +801,10 @@ class MainActivity : ComponentActivity() {
 
                                 if (previousChapter != null) {
 
-                                    selectedChapter =
-                                        previousChapter
-
-                                    currentPage = 1
-
-                                    selectedPages =
-                                        loadChapterPages(
-                                            selectedSeries!!,
-                                            previousChapter
-                                        )
+                                    openChapter(
+                                        series = selectedSeries!!,
+                                        chapter = previousChapter
+                                    )
 
                                 }
 
@@ -795,81 +835,10 @@ class MainActivity : ComponentActivity() {
 // If this chapter has partial progress, ask whether to resume or restart.
                         onChapterClick = { series, chapter ->
 
-                            continuousReading = false
-
-                            // Remember what the user is trying to open while we decide
-                            // whether a resume dialog is necessary.
-                            pendingChapterSeries = series
-                            pendingChapter = chapter
-
-                            val seriesProgress =
-                                allProgress.find {
-                                    it.seriesTitle == series.title
-                                }
-
-                            val finalChapter =
-                                series.chapters
-                                    .sorted()
-                                    .lastOrNull()
-
-                            val finalChapterCompleted =
-                                finalChapter != null &&
-                                        seriesProgress
-                                            ?.chapters
-                                            ?.find {
-                                                it.chapter == finalChapter
-                                            }
-                                            ?.completed == true
-
-                            if (
-                                seriesProgress != null &&
-                                !seriesProgress.active &&
-                                finalChapterCompleted
-                            ) {
-
-                                pendingRereadSeries = series
-                                showRereadDialog = true
-
-                            } else {
-
-                                // Look for saved progress specifically for this chapter.
-                                val chapterProgress =
-                                    allProgress
-                                        .find {
-                                            it.seriesTitle == series.title
-                                        }
-                                        ?.chapters
-                                        ?.find {
-                                            it.chapter == chapter
-                                        }
-
-                                // A partially read chapter gets a Resume / Restart prompt.
-                                if (
-                                    chapterProgress != null &&
-                                    !chapterProgress.completed &&
-                                    chapterProgress.page > 1
-                                ) {
-
-                                    pendingResumePage =
-                                        chapterProgress.page
-
-                                    showResumeDialog = true
-
-                                } else {
-
-                                    // No partial progress, so open normally at page 1.
-                                    selectedSeries = series
-                                    selectedChapter = chapter
-                                    currentPage = 1
-
-                                    selectedPages =
-                                        loadChapterPages(
-                                            series,
-                                            chapter
-                                        )
-
-                                }
-                            }
+                            requestChapterOpen(
+                                series = series,
+                                chapter = chapter
+                            )
 
                         },
                         onContinueReading = { item ->
@@ -883,14 +852,11 @@ class MainActivity : ComponentActivity() {
 
                                 continuousReading = false
 
-                                selectedSeries = series
-                                selectedChapter = item.chapter
-                                currentPage = item.page
-                                selectedPages =
-                                    loadChapterPages(
-                                        series,
-                                        item.chapter
-                                    )
+                                openChapter(
+                                    series = series,
+                                    chapter = item.chapter,
+                                    page = item.page
+                                )
 
                             }
 
@@ -925,81 +891,10 @@ class MainActivity : ComponentActivity() {
                         // the user before deciding where to begin.
                         onChapterClick = { chapter ->
 
-                            continuousReading = false
-
-                            val series =
-                                selectedSeries!!
-
-                            // Remember the requested destination while we decide
-                            // whether to show a reread or resume dialog.
-                            pendingChapterSeries = series
-                            pendingChapter = chapter
-
-                            val seriesProgress =
-                                allProgress.find {
-                                    it.seriesTitle == series.title
-                                }
-
-                            val finalChapter =
-                                series.chapters
-                                    .sorted()
-                                    .lastOrNull()
-
-                            val finalChapterCompleted =
-                                finalChapter != null &&
-                                        seriesProgress
-                                            ?.chapters
-                                            ?.find {
-                                                it.chapter == finalChapter
-                                            }
-                                            ?.completed == true
-
-                            if (
-                                seriesProgress != null &&
-                                !seriesProgress.active &&
-                                finalChapterCompleted
-                            ) {
-
-                                // The series has reading history but is not currently active.
-                                // Ask how the user wants to handle a reread.
-                                pendingRereadSeries = series
-                                showRereadDialog = true
-
-                            } else {
-
-                                // Otherwise, fall back to the normal partial-progress logic.
-                                val chapterProgress =
-                                    seriesProgress
-                                        ?.chapters
-                                        ?.find {
-                                            it.chapter == chapter
-                                        }
-
-                                if (
-                                    chapterProgress != null &&
-                                    !chapterProgress.completed &&
-                                    chapterProgress.page > 1
-                                ) {
-
-                                    pendingResumePage =
-                                        chapterProgress.page
-
-                                    showResumeDialog = true
-
-                                } else {
-
-                                    selectedChapter = chapter
-                                    currentPage = 1
-
-                                    selectedPages =
-                                        loadChapterPages(
-                                            series,
-                                            chapter
-                                        )
-
-                                }
-
-                            }
+                            requestChapterOpen(
+                                series = selectedSeries!!,
+                                chapter = chapter
+                            )
 
                         },
 
