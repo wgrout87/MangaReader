@@ -17,7 +17,6 @@ import com.wgrou.mangareader.screens.ReaderScreen
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.key
 import com.wgrou.mangareader.data.ProgressManager
-import com.wgrou.mangareader.data.ContinueReadingItem
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
@@ -42,6 +41,7 @@ import com.wgrou.mangareader.data.ChapterLoader
 import com.wgrou.mangareader.data.ChapterLoadResult
 import com.wgrou.mangareader.reader.ReaderCoordinator
 import com.wgrou.mangareader.reader.ChapterOpenDecision
+import com.wgrou.mangareader.reader.ContinueReadingBuilder
 
 class MainActivity : ComponentActivity() {
 
@@ -71,6 +71,7 @@ class MainActivity : ComponentActivity() {
             val chapterLoader = ChapterLoader(libraryManager)
             val progressManager = ProgressManager(this)
             val readerCoordinator = ReaderCoordinator()
+            val continueReadingBuilder = ContinueReadingBuilder(libraryManager)
 
             MangaReaderTheme {
 
@@ -255,69 +256,9 @@ class MainActivity : ComponentActivity() {
                 }
 
                 val continueReadingItems =
-                    allProgress
-                    .filter {
-                        it.lastRead != null &&
-                                it.active
-                    }
-                        .sortedByDescending {
-                            it.lastRead
-                        }
-                        .mapNotNull { progress ->
-
-                        val series =
-                            libraryManager.getSeriesByTitle(
-                                progress.seriesTitle
-                            )
-                                ?: return@mapNotNull null
-
-                        val chapters =
-                            series.chapters.sorted()
-
-                        // Saved progress may refer to a chapter that no longer
-                        // exists after the library has been changed or resynced.
-                        if (progress.chapter !in chapters) {
-                            return@mapNotNull null
-                        }
-
-                        val savedChapterProgress =
-                            progress.chapters.find {
-                                it.chapter == progress.chapter
-                            }
-
-                        val currentIndex =
-                            chapters.indexOf(
-                                progress.chapter
-                            )
-
-                        val nextChapter =
-                            if (
-                                savedChapterProgress?.completed == true &&
-                                currentIndex >= 0
-                            ) {
-                                chapters.getOrNull(
-                                    currentIndex + 1
-                                )
-                            } else {
-                                null
-                            }
-
-                        ContinueReadingItem(
-                            seriesTitle = progress.seriesTitle,
-                            chapter =
-                                nextChapter
-                                    ?: progress.chapter,
-                            page =
-                                if (nextChapter != null) {
-                                    1
-                                } else {
-                                    progress.page
-                                },
-                            progress = progress
-                        )
-
-                    }
-                        .take(5)
+                    continueReadingBuilder.build(
+                        allProgress
+                    )
 
                 BackHandler(
                     enabled = selectedSeries != null
