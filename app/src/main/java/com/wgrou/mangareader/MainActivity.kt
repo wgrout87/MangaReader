@@ -593,20 +593,17 @@ class MainActivity : ComponentActivity() {
 
                     key(selectedChapter) {
 
-                        val chapters =
-                            selectedSeries!!.chapters.sorted()
-
-                        val currentChapterIndex =
-                            chapters.indexOf(
-                                selectedChapter
-                            )
-
                         val hasNextChapter =
-                            currentChapterIndex >= 0 &&
-                                    currentChapterIndex < chapters.lastIndex
+                            readerCoordinator.nextChapter(
+                                series = selectedSeries!!,
+                                currentChapter = selectedChapter!!
+                            ) != null
 
                         val hasPreviousChapter =
-                            currentChapterIndex > 0
+                            readerCoordinator.previousChapter(
+                                series = selectedSeries!!,
+                                currentChapter = selectedChapter!!
+                            ) != null
 
                         ReaderScreen(
                             pages = selectedPages!!,
@@ -644,17 +641,10 @@ class MainActivity : ComponentActivity() {
 
                             onNextChapter = {
 
-                                val chapters =
-                                    selectedSeries!!.chapters.sorted()
-
-                                val currentIndex =
-                                    chapters.indexOf(
-                                        selectedChapter
-                                    )
-
                                 val nextChapter =
-                                    chapters.getOrNull(
-                                        currentIndex + 1
+                                    readerCoordinator.nextChapter(
+                                        series = selectedSeries!!,
+                                        currentChapter = selectedChapter!!
                                     )
 
                                 if (nextChapter != null) {
@@ -701,17 +691,10 @@ class MainActivity : ComponentActivity() {
 
                             onPreviousChapter = {
 
-                                val chapters =
-                                    selectedSeries!!.chapters.sorted()
-
-                                val currentIndex =
-                                    chapters.indexOf(
-                                        selectedChapter
-                                    )
-
                                 val previousChapter =
-                                    chapters.getOrNull(
-                                        currentIndex - 1
+                                    readerCoordinator.previousChapter(
+                                        series = selectedSeries!!,
+                                        currentChapter = selectedChapter!!
                                     )
 
                                 if (previousChapter != null) {
@@ -727,17 +710,10 @@ class MainActivity : ComponentActivity() {
 
                             onPreviousChapterFromStart = {
 
-                                val chapters =
-                                    selectedSeries!!.chapters.sorted()
-
-                                val currentIndex =
-                                    chapters.indexOf(
-                                        selectedChapter
-                                    )
-
                                 val previousChapter =
-                                    chapters.getOrNull(
-                                        currentIndex - 1
+                                    readerCoordinator.previousChapter(
+                                        series = selectedSeries!!,
+                                        currentChapter = selectedChapter!!
                                     )
 
                                 if (previousChapter != null) {

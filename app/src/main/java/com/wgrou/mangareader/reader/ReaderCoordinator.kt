@@ -16,6 +16,34 @@ sealed class ChapterOpenDecision {
 
 class ReaderCoordinator {
 
+    fun nextChapter(
+        series: Series,
+        currentChapter: Float
+    ): Float? {
+        val chapters = series.chapters.sorted()
+        val index = chapters.indexOf(currentChapter)
+
+        return if (index >= 0) {
+            chapters.getOrNull(index + 1)
+        } else {
+            null
+        }
+    }
+
+    fun previousChapter(
+        series: Series,
+        currentChapter: Float
+    ): Float? {
+        val chapters = series.chapters.sorted()
+        val index = chapters.indexOf(currentChapter)
+
+        return if (index > 0) {
+            chapters.getOrNull(index - 1)
+        } else {
+            null
+        }
+    }
+
     fun decideChapterOpen(
         series: Series,
         chapter: Float,
