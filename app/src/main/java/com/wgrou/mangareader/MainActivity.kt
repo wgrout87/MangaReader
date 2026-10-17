@@ -42,6 +42,7 @@ import com.wgrou.mangareader.data.ChapterLoadResult
 import com.wgrou.mangareader.reader.ReaderCoordinator
 import com.wgrou.mangareader.reader.ChapterOpenDecision
 import com.wgrou.mangareader.reader.ContinueReadingBuilder
+import com.wgrou.mangareader.reader.ReaderSessionState
 
 class MainActivity : ComponentActivity() {
 
@@ -72,32 +73,17 @@ class MainActivity : ComponentActivity() {
             val progressManager = ProgressManager(this)
             val readerCoordinator = ReaderCoordinator()
             val continueReadingBuilder = ContinueReadingBuilder(libraryManager)
+            val readerSession = remember {
+                ReaderSessionState()
+            }
 
             MangaReaderTheme {
 
-                var continuousReading by remember {
-                    mutableStateOf(false)
-                }
-
-                var rereadingSeries by remember {
-                    mutableStateOf(false)
-                }
-
-                var selectedSeries by remember {
-                    mutableStateOf<Series?>(null)
-                }
-
-                var selectedChapter by remember {
-                    mutableStateOf<Float?>(null)
-                }
-
-                var selectedPages by remember {
-                    mutableStateOf<List<File>?>(null)
-                }
-
-                var currentPage by remember {
-                    mutableStateOf(1)
-                }
+                val continuousReading = readerSession.continuousReading
+                val selectedSeries = readerSession.selectedSeries
+                val selectedChapter = readerSession.selectedChapter
+                val selectedPages = readerSession.selectedPages
+                val currentPage = readerSession.currentPage
 
                 var allProgress by remember {
                     mutableStateOf(
@@ -125,10 +111,6 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(false)
                 }
 
-                var pendingRereadSeries by remember {
-                    mutableStateOf<Series?>(null)
-                }
-
                 var chapterLoadError by remember {
                     mutableStateOf<String?>(null)
                 }
@@ -149,18 +131,7 @@ class MainActivity : ComponentActivity() {
                     ) {
 
                         is ChapterLoadResult.Success -> {
-
                             chapterLoadError = null
-
-                            if (result.pages.isNotEmpty()) {
-
-                                currentPage =
-                                    currentPage.coerceIn(
-                                        1,
-                                        result.pages.size
-                                    )
-                            }
-
                             result.pages
                         }
 
@@ -179,35 +150,35 @@ class MainActivity : ComponentActivity() {
                     chapter: Float,
                     page: Int = 1
                 ) {
-                    selectedSeries = series
-                    selectedChapter = chapter
-                    currentPage = page
+                    val pages = loadChapterPages(series, chapter)
 
-                    selectedPages =
-                        loadChapterPages(
-                            series,
-                            chapter
+                    if (pages != null) {
+                        readerSession.openChapter(
+                            series = series,
+                            chapter = chapter,
+                            pages = pages,
+                            page = page
                         )
+                    } else {
+                        readerSession.selectSeries(series)
+                    }
                 }
 
                 fun openChapterAtEnd(
                     series: Series,
                     chapter: Float
                 ) {
-                    selectedSeries = series
-                    selectedChapter = chapter
-
-                    val pages =
-                        loadChapterPages(
-                            series,
-                            chapter
-                        )
+                    val pages = loadChapterPages(series, chapter)
 
                     if (pages != null) {
-                        currentPage =
-                            pages.size.coerceAtLeast(1)
-
-                        selectedPages = pages
+                        readerSession.openChapter(
+                            series = series,
+                            chapter = chapter,
+                            pages = pages,
+                            page = pages.size.coerceAtLeast(1)
+                        )
+                    } else {
+                        readerSession.selectSeries(series)
                     }
                 }
 
@@ -215,7 +186,7 @@ class MainActivity : ComponentActivity() {
                     series: Series,
                     chapter: Float
                 ) {
-                    continuousReading = false
+                    readerSession.updateContinuousReading(false)
 
                     pendingChapterSeries = series
                     pendingChapter = chapter
@@ -248,8 +219,6 @@ class MainActivity : ComponentActivity() {
                         }
 
                         is ChapterOpenDecision.AskReread -> {
-
-                            pendingRereadSeries = series
                             showRereadDialog = true
                         }
                     }
@@ -263,17 +232,11 @@ class MainActivity : ComponentActivity() {
                 BackHandler(
                     enabled = selectedSeries != null
                 ) {
-
                     if (selectedPages != null) {
-
-                        selectedPages = null
-
+                        readerSession.closeChapter()
                     } else {
-
-                        selectedSeries = null
-
+                        readerSession.selectSeries(null)
                     }
-
                 }
 
                 if (showResumeDialog) {
@@ -390,7 +353,6 @@ class MainActivity : ComponentActivity() {
                         onDismissRequest = {
 
                             showRereadDialog = false
-                            pendingRereadSeries = null
                             pendingChapterSeries = null
                             pendingChapter = null
 
@@ -441,7 +403,7 @@ class MainActivity : ComponentActivity() {
                                         allProgress =
                                             progressManager.getAllProgress()
 
-                                        continuousReading = false
+                                        readerSession.updateContinuousReading(false)
 
                                         openChapter(
                                             series = series,
@@ -451,7 +413,6 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     showRereadDialog = false
-                                    pendingRereadSeries = null
                                     pendingChapterSeries = null
                                     pendingChapter = null
 
@@ -487,7 +448,7 @@ class MainActivity : ComponentActivity() {
                                         allProgress =
                                             progressManager.getAllProgress()
 
-                                        continuousReading = false
+                                        readerSession.updateContinuousReading(false)
 
                                         openChapter(
                                             series = series,
@@ -497,7 +458,6 @@ class MainActivity : ComponentActivity() {
                                     }
 
                                     showRereadDialog = false
-                                    pendingRereadSeries = null
                                     pendingChapterSeries = null
                                     pendingChapter = null
 
@@ -543,7 +503,7 @@ class MainActivity : ComponentActivity() {
                                 onClick = {
 
                                     chapterLoadError = null
-                                    selectedPages = null
+                                    readerSession.closeChapter()
 
                                 },
                                 modifier = Modifier.padding(
@@ -564,11 +524,7 @@ class MainActivity : ComponentActivity() {
                                 onClick = {
 
                                     chapterLoadError = null
-                                    selectedPages = null
-                                    selectedChapter = null
-                                    selectedSeries = null
-                                    currentPage = 1
-                                    continuousReading = false
+                                    readerSession.selectSeries(null)
 
                                 },
                                 modifier = Modifier.padding(
@@ -613,12 +569,12 @@ class MainActivity : ComponentActivity() {
 
                             onPageChanged = { page ->
 
-                                currentPage = page
+                                readerSession.updateCurrentPage(page)
 
                                 progressManager.saveProgress(
                                     seriesTitle = selectedSeries!!.title,
                                     chapter = selectedChapter!!,
-                                    page = currentPage
+                                    page = readerSession.currentPage
                                 )
 
                                 allProgress =
@@ -666,7 +622,7 @@ class MainActivity : ComponentActivity() {
 
                                     }
 
-                                    continuousReading = true
+                                    readerSession.updateContinuousReading(true)
 
                                     openChapter(
                                         series = selectedSeries!!,
@@ -679,9 +635,7 @@ class MainActivity : ComponentActivity() {
 
                             onChapterList = {
 
-                                continuousReading = false
-                                selectedPages = null
-                                currentPage = 1
+                                readerSession.closeChapter()
 
                             },
 
@@ -729,11 +683,7 @@ class MainActivity : ComponentActivity() {
 
                             onLibrary = {
 
-                                continuousReading = false
-                                selectedPages = null
-                                selectedChapter = null
-                                selectedSeries = null
-                                currentPage = 1
+                                readerSession.selectSeries(null)
 
                             }
                         )
@@ -746,7 +696,7 @@ class MainActivity : ComponentActivity() {
                         continueReadingItems = continueReadingItems,
                         allProgress = allProgress,
                         onSeriesClick = { series ->
-                            selectedSeries = series
+                            readerSession.selectSeries(series)
                         },
                         // User tapped the chapter shortcut directly from the Library.
 // If this chapter has partial progress, ask whether to resume or restart.
@@ -767,7 +717,7 @@ class MainActivity : ComponentActivity() {
 
                             if (series != null) {
 
-                                continuousReading = false
+                                readerSession.updateContinuousReading(false)
 
                                 openChapter(
                                     series = series,
