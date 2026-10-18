@@ -68,11 +68,26 @@ class MainActivity : ComponentActivity() {
 
         setContent {
 
-            val libraryManager = LibraryManager(this)
-            val chapterLoader = ChapterLoader(libraryManager)
-            val progressManager = ProgressManager(this)
-            val readerCoordinator = ReaderCoordinator()
-            val continueReadingBuilder = ContinueReadingBuilder(libraryManager)
+            val libraryManager = remember {
+                LibraryManager(this)
+            }
+
+            val chapterLoader = remember(libraryManager) {
+                ChapterLoader(libraryManager)
+            }
+
+            val progressManager = remember {
+                ProgressManager(this)
+            }
+
+            val readerCoordinator = remember {
+                ReaderCoordinator()
+            }
+
+            val continueReadingBuilder = remember(libraryManager) {
+                ContinueReadingBuilder(libraryManager)
+            }
+
             val readerSession = remember {
                 ReaderSessionState()
             }
@@ -89,6 +104,10 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(
                         progressManager.getAllProgress()
                     )
+                }
+
+                fun refreshProgress() {
+                    allProgress = progressManager.getAllProgress()
                 }
 
                 var pendingChapterSeries by remember {
@@ -233,6 +252,7 @@ class MainActivity : ComponentActivity() {
                     enabled = selectedSeries != null
                 ) {
                     if (selectedPages != null) {
+                        refreshProgress()
                         readerSession.closeChapter()
                     } else {
                         readerSession.selectSeries(null)
@@ -400,8 +420,7 @@ class MainActivity : ComponentActivity() {
                                             rereading = true
                                         )
 
-                                        allProgress =
-                                            progressManager.getAllProgress()
+                                        refreshProgress()
 
                                         readerSession.updateContinuousReading(false)
 
@@ -445,8 +464,7 @@ class MainActivity : ComponentActivity() {
                                             series.title
                                         )
 
-                                        allProgress =
-                                            progressManager.getAllProgress()
+                                        refreshProgress()
 
                                         readerSession.updateContinuousReading(false)
 
@@ -577,9 +595,6 @@ class MainActivity : ComponentActivity() {
                                     page = readerSession.currentPage
                                 )
 
-                                allProgress =
-                                    progressManager.getAllProgress()
-
                             },
 
                             onChapterCompleted = {
@@ -590,8 +605,7 @@ class MainActivity : ComponentActivity() {
                                     isFinalChapter = !hasNextChapter
                                 )
 
-                                allProgress =
-                                    progressManager.getAllProgress()
+                                refreshProgress()
 
                             },
 
@@ -617,8 +631,7 @@ class MainActivity : ComponentActivity() {
                                             chapter = nextChapter
                                         )
 
-                                        allProgress =
-                                            progressManager.getAllProgress()
+                                        refreshProgress()
 
                                     }
 
@@ -634,9 +647,8 @@ class MainActivity : ComponentActivity() {
                             },
 
                             onChapterList = {
-
+                                refreshProgress()
                                 readerSession.closeChapter()
-
                             },
 
                             continuousReading = continuousReading,
@@ -682,9 +694,8 @@ class MainActivity : ComponentActivity() {
                             },
 
                             onLibrary = {
-
+                                refreshProgress()
                                 readerSession.selectSeries(null)
-
                             }
                         )
 
@@ -776,8 +787,7 @@ class MainActivity : ComponentActivity() {
                                 page = pageCount
                             )
 
-                            allProgress =
-                                progressManager.getAllProgress()
+                            refreshProgress()
 
                         },
 
@@ -788,8 +798,7 @@ class MainActivity : ComponentActivity() {
                                 chapter = chapter
                             )
 
-                            allProgress =
-                                progressManager.getAllProgress()
+                            refreshProgress()
 
                         },
 
@@ -801,8 +810,7 @@ class MainActivity : ComponentActivity() {
                                 pageCounts = pageCounts
                             )
 
-                            allProgress =
-                                progressManager.getAllProgress()
+                            refreshProgress()
 
                         },
 
@@ -812,8 +820,7 @@ class MainActivity : ComponentActivity() {
                                 seriesTitle = selectedSeries!!.title
                             )
 
-                            allProgress =
-                                progressManager.getAllProgress()
+                            refreshProgress()
 
                         }
                     )
