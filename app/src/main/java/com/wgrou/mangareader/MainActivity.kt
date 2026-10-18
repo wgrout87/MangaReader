@@ -1,49 +1,35 @@
 package com.wgrou.mangareader
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import com.wgrou.mangareader.ui.theme.MangaReaderTheme
-import com.wgrou.mangareader.screens.LibraryScreen
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import com.wgrou.mangareader.data.Series
-import com.wgrou.mangareader.screens.ChapterListScreen
-import com.wgrou.mangareader.data.LibraryManager
-import java.io.File
-import com.wgrou.mangareader.screens.ReaderScreen
-import androidx.activity.compose.BackHandler
-import androidx.compose.runtime.key
-import com.wgrou.mangareader.data.ProgressManager
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Text
-import com.wgrou.mangareader.data.PageLoadResult
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.Button
-import androidx.compose.ui.Alignment
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.SystemBarStyle
-import android.graphics.Color
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Surface
-import com.wgrou.mangareader.data.ChapterLoader
 import com.wgrou.mangareader.data.ChapterLoadResult
-import com.wgrou.mangareader.reader.ReaderCoordinator
+import com.wgrou.mangareader.data.ChapterLoader
+import com.wgrou.mangareader.data.LibraryManager
+import com.wgrou.mangareader.data.ProgressManager
+import com.wgrou.mangareader.data.Series
 import com.wgrou.mangareader.reader.ChapterOpenDecision
-import com.wgrou.mangareader.reader.ContinueReadingBuilder
-import com.wgrou.mangareader.reader.ReaderSessionState
 import com.wgrou.mangareader.reader.ChapterPageCountBuilder
+import com.wgrou.mangareader.reader.ContinueReadingBuilder
+import com.wgrou.mangareader.reader.ReaderCoordinator
+import com.wgrou.mangareader.reader.ReaderSessionState
+import com.wgrou.mangareader.screens.ChapterListScreen
+import com.wgrou.mangareader.screens.ChapterLoadErrorScreen
+import com.wgrou.mangareader.screens.LibraryScreen
+import com.wgrou.mangareader.screens.ReaderScreen
+import com.wgrou.mangareader.screens.RereadSeriesDialog
+import com.wgrou.mangareader.screens.ResumeChapterDialog
+import com.wgrou.mangareader.ui.theme.MangaReaderTheme
+import java.io.File
 
 class MainActivity : ComponentActivity() {
 
@@ -133,6 +119,13 @@ class MainActivity : ComponentActivity() {
 
                 var showRereadDialog by remember {
                     mutableStateOf(false)
+                }
+
+                fun clearPendingChapterRequest() {
+                    pendingChapterSeries = null
+                    pendingChapter = null
+                    showResumeDialog = false
+                    showRereadDialog = false
                 }
 
                 var chapterLoadError by remember {
@@ -266,308 +259,130 @@ class MainActivity : ComponentActivity() {
 
                 if (showResumeDialog) {
 
-                    AlertDialog(
-                        onDismissRequest = {
+                    ResumeChapterDialog(
+                        resumePage = pendingResumePage,
 
-                            showResumeDialog = false
-                            pendingChapterSeries = null
-                            pendingChapter = null
+                        onContinue = {
+                            val series = pendingChapterSeries
+                            val chapter = pendingChapter
 
-                        },
-
-                        title = {
-
-                            Text("Resume Chapter?")
-
-                        },
-
-                        text = {
-
-                            Text(
-                                "Continue from page $pendingResumePage or restart from page 1?"
-                            )
-
-                        },
-
-                        confirmButton = {
-
-                            TextButton(
-                                onClick = {
-
-                                    val series =
-                                        pendingChapterSeries
-
-                                    val chapter =
-                                        pendingChapter
-
-                                    if (
-                                        series != null &&
-                                        chapter != null
-                                    ) {
-
-                                        openChapter(
-                                            series = series,
-                                            chapter = chapter,
-                                            page = pendingResumePage
-                                        )
-
-                                    }
-
-                                    showResumeDialog = false
-                                    pendingChapterSeries = null
-                                    pendingChapter = null
-
-                                }
+                            if (
+                                series != null &&
+                                chapter != null
                             ) {
-
-                                Text(
-                                    "Continue from page $pendingResumePage"
+                                openChapter(
+                                    series = series,
+                                    chapter = chapter,
+                                    page = pendingResumePage
                                 )
-
                             }
 
+                            clearPendingChapterRequest()
                         },
 
-                        dismissButton = {
+                        onRestart = {
+                            val series = pendingChapterSeries
+                            val chapter = pendingChapter
 
-                            TextButton(
-                                onClick = {
-
-                                    val series =
-                                        pendingChapterSeries
-
-                                    val chapter =
-                                        pendingChapter
-
-                                    if (
-                                        series != null &&
-                                        chapter != null
-                                    ) {
-
-                                        openChapter(
-                                            series = series,
-                                            chapter = chapter
-                                        )
-
-                                    }
-
-                                    showResumeDialog = false
-                                    pendingChapterSeries = null
-                                    pendingChapter = null
-
-                                }
+                            if (
+                                series != null &&
+                                chapter != null
                             ) {
-
-                                Text("Start from page 1")
-
+                                openChapter(
+                                    series = series,
+                                    chapter = chapter
+                                )
                             }
 
+                            clearPendingChapterRequest()
                         },
 
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        textContentColor = MaterialTheme.colorScheme.secondary,
-                        shape = RoundedCornerShape(12.dp)
+                        onDismiss = {
+                            clearPendingChapterRequest()
+                        }
                     )
-
                 }
 
                 if (showRereadDialog) {
 
-                    AlertDialog(
-                        onDismissRequest = {
+                    RereadSeriesDialog(
+                        onTrackReread = {
+                            val series = pendingChapterSeries
+                            val chapter = pendingChapter
 
-                            showRereadDialog = false
-                            pendingChapterSeries = null
-                            pendingChapter = null
-
-                        },
-
-                        title = {
-
-                            Text("Reread this series?")
-
-                        },
-
-                        text = {
-
-                            Text(
-                                "You have already completed this series. " +
-                                        "Would you like to track a reread while keeping your read history, " +
-                                        "or start the series over and mark it unread?"
-                            )
-
-                        },
-
-                        confirmButton = {
-
-                            TextButton(
-                                onClick = {
-
-                                    val series =
-                                        pendingChapterSeries
-
-                                    val chapter =
-                                        pendingChapter
-
-                                    if (
-                                        series != null &&
-                                        chapter != null
-                                    ) {
-
-                                        progressManager.markChapterUnread(
-                                            seriesTitle = series.title,
-                                            chapter = chapter
-                                        )
-
-                                        progressManager.setRereading(
-                                            seriesTitle = series.title,
-                                            rereading = true
-                                        )
-
-                                        refreshProgress()
-
-                                        readerSession.updateContinuousReading(false)
-
-                                        openChapter(
-                                            series = series,
-                                            chapter = chapter
-                                        )
-
-                                    }
-
-                                    showRereadDialog = false
-                                    pendingChapterSeries = null
-                                    pendingChapter = null
-
-                                }
+                            if (
+                                series != null &&
+                                chapter != null
                             ) {
+                                progressManager.markChapterUnread(
+                                    seriesTitle = series.title,
+                                    chapter = chapter
+                                )
 
-                                Text("Track reread")
+                                progressManager.setRereading(
+                                    seriesTitle = series.title,
+                                    rereading = true
+                                )
 
+                                refreshProgress()
+
+                                readerSession.updateContinuousReading(false)
+
+                                openChapter(
+                                    series = series,
+                                    chapter = chapter
+                                )
                             }
 
+                            clearPendingChapterRequest()
                         },
 
-                        dismissButton = {
+                        onStartOver = {
+                            val series = pendingChapterSeries
+                            val chapter = pendingChapter
 
-                            TextButton(
-                                onClick = {
-
-                                    val series =
-                                        pendingChapterSeries
-
-                                    val chapter =
-                                        pendingChapter
-
-                                    if (
-                                        series != null &&
-                                        chapter != null
-                                    ) {
-
-                                        progressManager.markSeriesUnread(
-                                            series.title
-                                        )
-
-                                        refreshProgress()
-
-                                        readerSession.updateContinuousReading(false)
-
-                                        openChapter(
-                                            series = series,
-                                            chapter = chapter
-                                        )
-
-                                    }
-
-                                    showRereadDialog = false
-                                    pendingChapterSeries = null
-                                    pendingChapter = null
-
-                                }
+                            if (
+                                series != null &&
+                                chapter != null
                             ) {
+                                progressManager.markSeriesUnread(
+                                    series.title
+                                )
 
-                                Text("Start series over")
+                                refreshProgress()
 
+                                readerSession.updateContinuousReading(false)
+
+                                openChapter(
+                                    series = series,
+                                    chapter = chapter
+                                )
                             }
 
+                            clearPendingChapterRequest()
                         },
 
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface,
-                        textContentColor = MaterialTheme.colorScheme.secondary,
-                        shape = RoundedCornerShape(12.dp)
+                        onDismiss = {
+                            clearPendingChapterRequest()
+                        }
                     )
-
                 }
 
                 if (chapterLoadError != null) {
 
-                    Surface(
-                        modifier = Modifier.fillMaxSize(),
-                        color = MaterialTheme.colorScheme.background,
-                        contentColor = MaterialTheme.colorScheme.onBackground
-                    ) {
+                    ChapterLoadErrorScreen(
+                        message = chapterLoadError!!,
 
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .safeDrawingPadding()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
+                        onChapterList = {
+                            chapterLoadError = null
+                            readerSession.closeChapter()
+                        },
 
-                            Text(
-                                text = chapterLoadError!!
-                            )
-
-                            Button(
-                                onClick = {
-
-                                    chapterLoadError = null
-                                    readerSession.closeChapter()
-
-                                },
-                                modifier = Modifier.padding(
-                                    top = 24.dp
-                                ),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-
-                                Text("Chapter List")
-
-                            }
-
-                            Button(
-                                onClick = {
-
-                                    chapterLoadError = null
-                                    readerSession.selectSeries(null)
-
-                                },
-                                modifier = Modifier.padding(
-                                    top = 12.dp
-                                ),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.surface,
-                                    contentColor = MaterialTheme.colorScheme.onSurface
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-
-                                Text("Library")
-
-                            }
-
+                        onLibrary = {
+                            chapterLoadError = null
+                            readerSession.selectSeries(null)
                         }
-
-                    }
-
+                    )
                 } else if (selectedPages != null) {
 
                     key(selectedChapter) {
