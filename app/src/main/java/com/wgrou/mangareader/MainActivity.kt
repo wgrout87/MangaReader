@@ -43,6 +43,7 @@ import com.wgrou.mangareader.reader.ReaderCoordinator
 import com.wgrou.mangareader.reader.ChapterOpenDecision
 import com.wgrou.mangareader.reader.ContinueReadingBuilder
 import com.wgrou.mangareader.reader.ReaderSessionState
+import com.wgrou.mangareader.reader.ChapterPageCountBuilder
 
 class MainActivity : ComponentActivity() {
 
@@ -86,6 +87,10 @@ class MainActivity : ComponentActivity() {
 
             val continueReadingBuilder = remember(libraryManager) {
                 ContinueReadingBuilder(libraryManager)
+            }
+
+            val chapterPageCountBuilder = remember(libraryManager) {
+                ChapterPageCountBuilder(libraryManager)
             }
 
             val readerSession = remember {
@@ -710,7 +715,7 @@ class MainActivity : ComponentActivity() {
                             readerSession.selectSeries(series)
                         },
                         // User tapped the chapter shortcut directly from the Library.
-// If this chapter has partial progress, ask whether to resume or restart.
+                        // If this chapter has partial progress, ask whether to resume or restart.
                         onChapterClick = { series, chapter ->
 
                             requestChapterOpen(
@@ -743,16 +748,11 @@ class MainActivity : ComponentActivity() {
 
                 } else {
 
-                    val pageCounts =
-                        selectedSeries!!.chapters
-                            .associateWith { chapter ->
-
-                                libraryManager.getPageCount(
-                                    selectedSeries!!,
-                                    chapter
-                                )
-
-                            }
+                    val pageCounts = remember(selectedSeries) {
+                        chapterPageCountBuilder.build(
+                            selectedSeries!!
+                        )
+                    }
 
                     ChapterListScreen(
                         series = selectedSeries!!,
