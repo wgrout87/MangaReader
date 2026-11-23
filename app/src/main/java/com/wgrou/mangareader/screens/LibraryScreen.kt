@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.material3.TextButton
 
 @Composable
 fun LibraryScreen(
@@ -37,7 +39,8 @@ fun LibraryScreen(
     allProgress: List<ReadingProgress>,
     onSeriesClick: (Series) -> Unit,
     onChapterClick: (Series, Float) -> Unit,
-    onContinueReading: (ContinueReadingItem) -> Unit
+    onContinueReading: (ContinueReadingItem) -> Unit,
+    onSettingsClick: () -> Unit
 ) {
 
     val context = LocalContext.current
@@ -71,18 +74,29 @@ fun LibraryScreen(
                     )
                 )
 
-                Text(
-                    text = "Library",
-                    style = MaterialTheme.typography.headlineLarge,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 4.dp,
-                        bottom = 24.dp
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 4.dp,
+                            bottom = 24.dp
+                        ),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Library",
+                        style = MaterialTheme.typography.headlineLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        fontWeight = FontWeight.Bold
                     )
-                )
+
+                    TextButton(onClick = onSettingsClick) {
+                        Text("Settings")
+                    }
+                }
 
             }
 

@@ -30,6 +30,7 @@ import com.wgrou.mangareader.screens.RereadSeriesDialog
 import com.wgrou.mangareader.screens.ResumeChapterDialog
 import com.wgrou.mangareader.ui.theme.MangaReaderTheme
 import java.io.File
+import com.wgrou.mangareader.screens.SettingsScreen
 
 class MainActivity : ComponentActivity() {
 
@@ -90,6 +91,10 @@ class MainActivity : ComponentActivity() {
                 val selectedChapter = readerSession.selectedChapter
                 val selectedPages = readerSession.selectedPages
                 val currentPage = readerSession.currentPage
+
+                var showSettings by remember {
+                    mutableStateOf(false)
+                }
 
                 var allProgress by remember {
                     mutableStateOf(
@@ -247,9 +252,11 @@ class MainActivity : ComponentActivity() {
                     )
 
                 BackHandler(
-                    enabled = selectedSeries != null
+                    enabled = showSettings || selectedSeries != null
                 ) {
-                    if (selectedPages != null) {
+                    if (showSettings) {
+                        showSettings = false
+                    } else if (selectedPages != null) {
                         refreshProgress()
                         readerSession.closeChapter()
                     } else {
@@ -521,9 +528,20 @@ class MainActivity : ComponentActivity() {
 
                     }
 
+                } else if (showSettings) {
+
+                    SettingsScreen(
+                        onBack = {
+                            showSettings = false
+                        }
+                    )
+
                 } else if (selectedSeries == null) {
 
                     LibraryScreen(
+                        onSettingsClick = {
+                            showSettings = true
+                        },
                         continueReadingItems = continueReadingItems,
                         allProgress = allProgress,
                         onSeriesClick = { series ->
