@@ -31,6 +31,7 @@ import com.wgrou.mangareader.screens.ResumeChapterDialog
 import com.wgrou.mangareader.ui.theme.MangaReaderTheme
 import java.io.File
 import com.wgrou.mangareader.screens.SettingsScreen
+import com.wgrou.mangareader.data.SettingsManager
 
 class MainActivity : ComponentActivity() {
 
@@ -66,6 +67,10 @@ class MainActivity : ComponentActivity() {
 
             val progressManager = remember {
                 ProgressManager(this)
+            }
+
+            val settingsManager = remember {
+                SettingsManager(this)
             }
 
             val readerCoordinator = remember {
