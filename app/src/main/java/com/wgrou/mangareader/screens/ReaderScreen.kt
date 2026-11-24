@@ -191,11 +191,6 @@ fun ReaderScreen(
                         }
 
                         Box(
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                        AsyncImage(
-                            model = page,
-                            contentDescription = "Manga page ${actualPageIndex + 1}",
                             modifier = Modifier
                                 .fillMaxSize()
                                 .pointerInput(page) {
@@ -210,6 +205,8 @@ fun ReaderScreen(
                                         var panStartOffsetY = offsetY
 
                                         var transformGestureStarted = false
+                                        var singleFingerPanStarted = false
+                                        var accumulatedMovement = Offset.Zero
 
                                         do {
                                             val event = awaitPointerEvent()
@@ -356,6 +353,39 @@ fun ReaderScreen(
                                                     event.changes.forEach {
                                                         it.consume()
                                                     }
+                                                } else if (scale > 1f && pressedPointers.size == 1) {
+                                                    val pointer = pressedPointers.first()
+
+                                                    val movement =
+                                                        pointer.position - pointer.previousPosition
+
+                                                    accumulatedMovement += movement
+
+                                                    if (!singleFingerPanStarted &&
+                                                        accumulatedMovement.getDistance() > viewConfiguration.touchSlop
+                                                    ) {
+                                                        singleFingerPanStarted = true
+                                                    }
+
+                                                    if (!singleFingerPanStarted) {
+                                                        continue
+                                                    }
+
+                                                    val maxOffsetX =
+                                                        (size.width * (scale - 1f)) / 2f
+
+                                                    val maxOffsetY =
+                                                        (size.height * (scale - 1f)) / 2f
+
+                                                    offsetX = (offsetX + movement.x)
+                                                        .coerceIn(-maxOffsetX, maxOffsetX)
+
+                                                    offsetY = (offsetY + movement.y)
+                                                        .coerceIn(-maxOffsetY, maxOffsetY)
+
+                                                    if (movement != Offset.Zero) {
+                                                        pointer.consume()
+                                                    }
                                                 }
                                             }
 
@@ -378,16 +408,21 @@ fun ReaderScreen(
                                         }
                                     )
                                 }
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-
-                                    translationX = offsetX
-                                    translationY = offsetY
-                                },
-                            colorFilter = paperWarmthFilter(paperWarmth),
-                            contentScale = ContentScale.Fit
-                        )
+                        ) {
+                            AsyncImage(
+                                model = page,
+                                contentDescription = "Manga page ${actualPageIndex + 1}",
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        scaleX = scale
+                                        scaleY = scale
+                                        translationX = offsetX
+                                        translationY = offsetY
+                                    },
+                                colorFilter = paperWarmthFilter(paperWarmth),
+                                contentScale = ContentScale.Fit
+                            )
                             PaperTextureOverlay(
                                 textureStrength = textureStrength,
                                 grainSeed = page.name.hashCode(),
@@ -400,7 +435,7 @@ fun ReaderScreen(
                                         translationY = offsetY
                                     }
                             )
-                            }
+                        }
                     }
 
                     actualPageIndex == pages.size -> {
