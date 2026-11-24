@@ -11,6 +11,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.wgrou.mangareader.data.SettingsManager
 import kotlin.math.roundToInt
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.wgrou.mangareader.R
+import com.wgrou.mangareader.reader.paperWarmthFilter
+import com.wgrou.mangareader.reader.PaperTextureOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,6 +52,13 @@ fun SettingsScreen(
             Text(
                 text = "Page Appearance",
                 style = MaterialTheme.typography.titleLarge
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            PaperAppearancePreview(
+                textureStrength = textureStrength,
+                paperWarmth = paperWarmth
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -124,5 +137,39 @@ private fun AppearanceSlider(
                 style = MaterialTheme.typography.bodySmall
             )
         }
+    }
+}
+
+@Composable
+private fun PaperAppearancePreview(
+    textureStrength: Float,
+    paperWarmth: Float
+) {
+    val previewPainter = painterResource(
+        R.drawable.paper_preview
+    )
+
+    val aspectRatio =
+        previewPainter.intrinsicSize.width /
+                previewPainter.intrinsicSize.height
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .aspectRatio(aspectRatio)
+    ) {
+        Image(
+            painter = previewPainter,
+            contentDescription = "Page appearance preview",
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Fit,
+            colorFilter = paperWarmthFilter(paperWarmth)
+        )
+
+        PaperTextureOverlay(
+            textureStrength = textureStrength,
+            grainSeed = 12345,
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }

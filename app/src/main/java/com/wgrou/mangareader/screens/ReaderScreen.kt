@@ -46,17 +46,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.BlendMode
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.graphics.drawscope.clipRect
-import kotlin.random.Random
-import com.wgrou.mangareader.R
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.res.imageResource
-import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.graphics.CompositingStrategy
+import com.wgrou.mangareader.reader.paperWarmthFilter
+import com.wgrou.mangareader.reader.PaperTextureOverlay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,10 +68,6 @@ fun ReaderScreen(
     onChapterList: () -> Unit,
     onLibrary: () -> Unit
 ) {
-
-    val paperTexture = ImageBitmap.imageResource(
-        R.drawable.paper_texture
-    )
 
     val previousPageOffset =
         if (
@@ -201,20 +188,6 @@ fun ReaderScreen(
 
                         var offsetY by remember(page) {
                             mutableStateOf(0f)
-                        }
-
-                        // Stable pseudo-random paper grain for this page.
-                        // Remembering it prevents the texture from changing during recomposition.
-                        val paperGrain = remember(page) {
-                            val random = Random(page.name.hashCode())
-
-                            List(5000) {
-                                Triple(
-                                    random.nextFloat(),
-                                    random.nextFloat(),
-                                    random.nextFloat()
-                                )
-                            }
                         }
 
                         Box(
@@ -412,17 +385,12 @@ fun ReaderScreen(
                                     translationX = offsetX
                                     translationY = offsetY
                                 },
-                            colorFilter = ColorFilter.tint(
-                                color = Color(
-                                    red = 1f,
-                                    green = 1f - (11f / 255f) * paperWarmth,
-                                    blue = 1f - (31f / 255f) * paperWarmth
-                                ),
-                                blendMode = BlendMode.Multiply
-                            ),
+                            colorFilter = paperWarmthFilter(paperWarmth),
                             contentScale = ContentScale.Fit
                         )
-                            Canvas(
+                            PaperTextureOverlay(
+                                textureStrength = textureStrength,
+                                grainSeed = page.name.hashCode(),
                                 modifier = Modifier
                                     .fillMaxSize()
                                     .graphicsLayer {
@@ -430,38 +398,8 @@ fun ReaderScreen(
                                         scaleY = scale
                                         translationX = offsetX
                                         translationY = offsetY
-                                        compositingStrategy = CompositingStrategy.ModulateAlpha
                                     }
-                            ) {
-                                clipRect {
-                                    drawImage(
-                                        image = paperTexture,
-                                        dstSize = IntSize(
-                                            size.width.toInt(),
-                                            size.height.toInt()
-                                        ),
-                                        alpha = textureStrength,
-                                        blendMode = BlendMode.Multiply
-                                    )
-
-                                    paperGrain.forEach { grain ->
-
-                                        val x = grain.first * size.width
-                                        val y = grain.second * size.height
-
-                                        val opacity =
-                                            (0.02f + grain.third * 0.03f) * textureStrength
-
-                                        drawCircle(
-                                            color = Color.Black.copy(
-                                                alpha = opacity
-                                            ),
-                                            radius = 1.5f,
-                                            center = Offset(x, y)
-                                        )
-                                    }
-                                }
-                            }
+                            )
                             }
                     }
 
