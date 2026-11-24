@@ -101,6 +101,18 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(false)
                 }
 
+                var textureStrength by remember {
+                    mutableStateOf(
+                        settingsManager.getTextureStrength()
+                    )
+                }
+
+                var paperWarmth by remember {
+                    mutableStateOf(
+                        settingsManager.getPaperWarmth()
+                    )
+                }
+
                 var allProgress by remember {
                     mutableStateOf(
                         progressManager.getAllProgress()
@@ -413,6 +425,8 @@ class MainActivity : ComponentActivity() {
 
                         ReaderScreen(
                             pages = selectedPages!!,
+                            textureStrength = textureStrength,
+                            paperWarmth = paperWarmth,
                             chapter = selectedChapter!!,
                             startPage = currentPage,
                             hasNextChapter = hasNextChapter,
@@ -536,9 +550,17 @@ class MainActivity : ComponentActivity() {
                 } else if (showSettings) {
 
                     SettingsScreen(
-                        onBack = {
-                            showSettings = false
-                        }
+                        textureStrength = textureStrength,
+                        paperWarmth = paperWarmth,
+                        onTextureStrengthChanged = { value ->
+                            textureStrength = value
+                            settingsManager.setTextureStrength(value)
+                        },
+                        onPaperWarmthChanged = { value ->
+                            paperWarmth = value
+                            settingsManager.setPaperWarmth(value)
+                        },
+                        onBack = { showSettings = false }
                     )
 
                 } else if (selectedSeries == null) {

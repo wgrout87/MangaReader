@@ -52,11 +52,18 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.drawscope.clipRect
 import kotlin.random.Random
+import com.wgrou.mangareader.R
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.res.imageResource
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.graphics.CompositingStrategy
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReaderScreen(
     pages: List<File>,
+    textureStrength: Float,
+    paperWarmth: Float,
     chapter: Float,
     startPage: Int,
     onPageChanged: (Int) -> Unit,
@@ -70,6 +77,10 @@ fun ReaderScreen(
     onChapterList: () -> Unit,
     onLibrary: () -> Unit
 ) {
+
+    val paperTexture = ImageBitmap.imageResource(
+        R.drawable.paper_texture
+    )
 
     val previousPageOffset =
         if (
@@ -401,8 +412,12 @@ fun ReaderScreen(
                                     translationX = offsetX
                                     translationY = offsetY
                                 },
-                                colorFilter = ColorFilter.tint(
-                                color = Color(0xFFFFF4E0),
+                            colorFilter = ColorFilter.tint(
+                                color = Color(
+                                    red = 1f,
+                                    green = 1f - (11f / 255f) * paperWarmth,
+                                    blue = 1f - (31f / 255f) * paperWarmth
+                                ),
                                 blendMode = BlendMode.Multiply
                             ),
                             contentScale = ContentScale.Fit
@@ -415,9 +430,19 @@ fun ReaderScreen(
                                         scaleY = scale
                                         translationX = offsetX
                                         translationY = offsetY
+                                        compositingStrategy = CompositingStrategy.ModulateAlpha
                                     }
                             ) {
                                 clipRect {
+                                    drawImage(
+                                        image = paperTexture,
+                                        dstSize = IntSize(
+                                            size.width.toInt(),
+                                            size.height.toInt()
+                                        ),
+                                        alpha = textureStrength,
+                                        blendMode = BlendMode.Multiply
+                                    )
 
                                     paperGrain.forEach { grain ->
 
@@ -425,7 +450,7 @@ fun ReaderScreen(
                                         val y = grain.second * size.height
 
                                         val opacity =
-                                            0.02f + grain.third * 0.03f
+                                            (0.02f + grain.third * 0.03f) * textureStrength
 
                                         drawCircle(
                                             color = Color.Black.copy(

@@ -1,68 +1,128 @@
 package com.wgrou.mangareader.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.wgrou.mangareader.data.SettingsManager
+import kotlin.math.roundToInt
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    textureStrength: Float,
+    paperWarmth: Float,
+    onTextureStrengthChanged: (Float) -> Unit,
+    onPaperWarmthChanged: (Float) -> Unit,
     onBack: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxSize(),
-        color = MaterialTheme.colorScheme.background,
-        contentColor = MaterialTheme.colorScheme.onBackground
-    ) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .safeDrawingPadding()
-                .padding(vertical = 16.dp)
+                .padding(innerPadding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
         ) {
             Text(
-                text = "MANGA READER",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp)
+                text = "Page Appearance",
+                style = MaterialTheme.typography.titleLarge
             )
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = 4.dp,
-                        bottom = 24.dp
-                    ),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Settings",
-                    style = MaterialTheme.typography.headlineLarge,
-                    fontWeight = FontWeight.Bold
-                )
+            Spacer(modifier = Modifier.height(24.dp))
 
-                TextButton(onClick = onBack) {
-                    Text("Back")
-                }
+            AppearanceSlider(
+                label = "Paper texture",
+                value = textureStrength,
+                onValueChanged = onTextureStrengthChanged,
+                minimumLabel = "Off",
+                maximumLabel = "Full strength"
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            AppearanceSlider(
+                label = "Paper warmth",
+                value = paperWarmth,
+                onValueChanged = onPaperWarmthChanged,
+                minimumLabel = "Neutral",
+                maximumLabel = "Warm"
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedButton(
+                onClick = {
+                    onTextureStrengthChanged(
+                        SettingsManager.DEFAULT_TEXTURE_STRENGTH
+                    )
+                    onPaperWarmthChanged(
+                        SettingsManager.DEFAULT_PAPER_WARMTH
+                    )
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Restore defaults")
             }
         }
     }
 }
 
+@Composable
+private fun AppearanceSlider(
+    label: String,
+    value: Float,
+    onValueChanged: (Float) -> Unit,
+    minimumLabel: String,
+    maximumLabel: String
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(label)
+            Text("${(value * 100).roundToInt()}%")
+        }
+
+        Slider(
+            value = value,
+            onValueChange = onValueChanged,
+            valueRange = 0f..1f,
+            steps = 19
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = minimumLabel,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                text = maximumLabel,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
