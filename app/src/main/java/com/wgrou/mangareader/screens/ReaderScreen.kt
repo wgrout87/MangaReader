@@ -52,7 +52,6 @@ import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.drawscope.clipRect
 import kotlin.random.Random
-import androidx.compose.ui.graphics.Brush
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -199,20 +198,6 @@ fun ReaderScreen(
                             val random = Random(page.name.hashCode())
 
                             List(5000) {
-                                Triple(
-                                    random.nextFloat(),
-                                    random.nextFloat(),
-                                    random.nextFloat()
-                                )
-                            }
-                        }
-
-                        // Large, very subtle variations in the paper tone.
-                        // These prevent the warm paper from looking perfectly uniform.
-                        val paperVariation = remember(page) {
-                            val random = Random(page.name.hashCode() + 1)
-
-                            List(12) {
                                 Triple(
                                     random.nextFloat(),
                                     random.nextFloat(),
@@ -433,34 +418,6 @@ fun ReaderScreen(
                                     }
                             ) {
                                 clipRect {
-                                    // Very broad tonal variation.
-// The circles deliberately overlap and extend far beyond their centers,
-// so they should read as uneven paper rather than visible spots.
-                                    paperVariation.forEach { variation ->
-
-                                        val center = Offset(
-                                            x = variation.first * size.width,
-                                            y = variation.second * size.height
-                                        )
-
-                                        val radius =
-                                            size.minDimension *
-                                                    (0.20f + variation.third * 0.25f)
-
-                                        drawCircle(
-                                            brush = Brush.radialGradient(
-                                                colors = listOf(
-                                                    Color.Black.copy(alpha = 0.15f),
-                                                    Color.Black.copy(alpha = 0.07f),
-                                                    Color.Transparent
-                                                ),
-                                                center = center,
-                                                radius = radius
-                                            ),
-                                            radius = radius,
-                                            center = center
-                                        )
-                                    }
 
                                     paperGrain.forEach { grain ->
 
