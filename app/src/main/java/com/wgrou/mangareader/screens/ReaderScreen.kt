@@ -48,6 +48,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.foundation.gestures.detectTapGestures
 import com.wgrou.mangareader.reader.paperWarmthFilter
 import com.wgrou.mangareader.reader.PaperTextureOverlay
+import androidx.compose.ui.input.pointer.util.VelocityTracker
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,6 +98,10 @@ fun ReaderScreen(
         mutableStateOf(false)
     }
 
+    var customPagerDragActive by remember {
+        mutableStateOf(false)
+    }
+
     val coroutineScope =
         rememberCoroutineScope()
 
@@ -105,11 +110,15 @@ fun ReaderScreen(
     }
 
     LaunchedEffect(
-        pagerState.currentPage
+        pagerState.settledPage,
+        customPagerDragActive
     ) {
+        if (customPagerDragActive) {
+            return@LaunchedEffect
+        }
 
         val pageIndex =
-            pagerState.currentPage -
+            pagerState.settledPage -
                     previousPageOffset
 
         when {
@@ -207,6 +216,12 @@ fun ReaderScreen(
                                         var transformGestureStarted = false
                                         var singleFingerPanStarted = false
                                         var accumulatedMovement = Offset.Zero
+
+                                        var pagerDragStarted = false
+
+                                        val pagerVelocityTracker = VelocityTracker()
+                                        var pagerDragPosition = 0f
+                                        val pagerStartPage = pagerState.currentPage
 
                                         do {
                                             val event = awaitPointerEvent()
@@ -377,10 +392,70 @@ fun ReaderScreen(
                                                     val maxOffsetY =
                                                         (size.height * (scale - 1f)) / 2f
 
-                                                    offsetX = (offsetX + movement.x)
+                                                    val panMultiplier = scale - 1f
+                                                    var remainingDragX = movement.x
+
+// Give the pager priority while a page transition is underway.
+                                                    if (kotlin.math.abs(pagerDragPosition) > 0.01f) {
+                                                        val pagerMovement = if (pagerDragPosition > 0f) {
+                                                            remainingDragX.coerceAtLeast(-pagerDragPosition)
+                                                        } else {
+                                                            remainingDragX.coerceAtMost(-pagerDragPosition)
+                                                        }
+
+                                                        val consumedPagerX =
+                                                            pagerState.dispatchRawDelta(pagerMovement)
+
+                                                        pagerDragPosition += consumedPagerX
+                                                        remainingDragX -= consumedPagerX
+
+                                                        if (kotlin.math.abs(pagerDragPosition) <= 0.01f) {
+                                                            pagerDragPosition = 0f
+                                                            pagerDragStarted = false
+                                                            pagerVelocityTracker.resetTracking()
+                                                        } else {
+                                                            remainingDragX = 0f
+                                                        }
+                                                    }
+
+// Pan the image when the pager is in its original position.
+                                                    val previousOffsetX = offsetX
+
+                                                    offsetX = (offsetX + remainingDragX * panMultiplier)
                                                         .coerceIn(-maxOffsetX, maxOffsetX)
 
-                                                    offsetY = (offsetY + movement.y)
+                                                    val consumedPanX =
+                                                        (offsetX - previousOffsetX) / panMultiplier
+
+                                                    remainingDragX -= consumedPanX
+
+// Pass any movement beyond the image boundary to the pager.
+                                                    if (kotlin.math.abs(remainingDragX) > 0.01f) {
+                                                        customPagerDragActive = true
+
+                                                        if (!pagerDragStarted) {
+                                                            pagerVelocityTracker.addPosition(
+                                                                pointer.previousUptimeMillis,
+                                                                Offset.Zero
+                                                            )
+                                                        }
+
+                                                        val consumedPagerX =
+                                                            pagerState.dispatchRawDelta(remainingDragX)
+
+                                                        pagerDragPosition += consumedPagerX
+                                                        pagerDragStarted =
+                                                            kotlin.math.abs(pagerDragPosition) > 0.01f
+                                                    }
+
+                                                    if (pagerDragStarted) {
+                                                        pagerVelocityTracker.addPosition(
+                                                            pointer.uptimeMillis,
+                                                            Offset(pagerDragPosition, 0f)
+                                                        )
+                                                    }
+
+                                                    offsetY = (offsetY + movement.y * panMultiplier)
                                                         .coerceIn(-maxOffsetY, maxOffsetY)
 
                                                     if (movement != Offset.Zero) {
@@ -394,6 +469,30 @@ fun ReaderScreen(
                                                 it.pressed
                                             }
                                         )
+
+                                        if (pagerDragStarted) {
+                                            val velocityX = pagerVelocityTracker.calculateVelocity().x
+                                            val velocityThreshold = 400f * density
+
+                                            val targetPage = when {
+                                                velocityX > velocityThreshold -> pagerStartPage + 1
+                                                velocityX < -velocityThreshold -> pagerStartPage - 1
+                                                else -> pagerState.currentPage
+                                            }.coerceIn(
+                                                maxOf(0, pagerStartPage - 1),
+                                                minOf(pagerState.pageCount - 1, pagerStartPage + 1)
+                                            )
+
+                                            coroutineScope.launch {
+                                                try {
+                                                    pagerState.animateScrollToPage(targetPage)
+                                                } finally {
+                                                    customPagerDragActive = false
+                                                }
+                                            }
+                                        } else {
+                                            customPagerDragActive = false
+                                        }
                                     }
                                 }
                                 .pointerInput(page) {
